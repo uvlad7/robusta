@@ -282,8 +282,8 @@ mod box_impl {
             for (idx, elem) in vec.into_iter().enumerate() {
                 // TODO: use AutoLocal - and convert immediately there - for types that
                 // don't hold local ref, so env.delete_local_ref is safe
-                todo!()
-                // env.set_object_array_element(&raw, idx as jsize, T::into(elem, env)).unwrap();
+                let raw_elem = T::into(elem, env);
+                env.set_object_array_element(&raw, idx as jsize, raw_elem).unwrap();
             }
             raw
         }
@@ -340,13 +340,10 @@ where
             .unwrap();
         let list = JList::from_env(env, &obj).unwrap();
 
-        todo!();
-        // self.into_iter()
-        //     .map(|el| JavaValue::autobox(IntoJavaValue::into(el, env), env))
-        //     .for_each(|el| {
-        //         list.add(env,&el).unwrap();
-        //     });
-
+        for el in self {
+            let boxed = JavaValue::autobox(IntoJavaValue::into(el, env), env);
+            list.add(env,&boxed).unwrap();
+        }
         obj
     }
 }

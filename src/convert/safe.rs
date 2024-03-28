@@ -301,8 +301,8 @@ mod box_impl {
             for (idx, elem) in vec.into_iter().enumerate() {
                 // TODO: use AutoLocal - and convert immediately there - for types that
                 // don't hold local ref, so env.delete_local_ref is safe
-                todo!()
-                // env.set_object_array_element(&raw, idx as jsize, T::try_into(elem, env)?)?;
+                let raw_elem = T::try_into(elem, env)?;
+                env.set_object_array_element(&raw, idx as jsize, raw_elem)?;
             }
             Ok(raw)
         }
@@ -350,18 +350,10 @@ where
         )?;
         let list = JList::from_env(env, &obj)?;
 
-        todo!();
-        // let _: Result<Vec<_>> = self
-        //     .into_iter()
-        //     .map::<Result<_>, _>(|el| {
-        //         Ok(JavaValue::autobox(
-        //             TryIntoJavaValue::try_into(el, env)?,
-        //             env,
-        //         ))
-        //     })
-        //     .map(|el| Ok(list.add(env, &el?)))
-        //     .collect();
-
+        for el in self {
+            let boxed = JavaValue::autobox(TryIntoJavaValue::try_into(el, env)?, env);
+            list.add(env,&boxed)?;
+        }
         Ok(obj)
     }
 }
