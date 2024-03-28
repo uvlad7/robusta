@@ -1,7 +1,7 @@
 pub(crate) mod thread_func;
 
-use ::jni::objects::GlobalRef;
-use ::jni::JavaVM;
+use robusta_jni::jni::objects::GlobalRef;
+use robusta_jni::jni::JavaVM;
 use robusta_jni::bridge;
 use std::sync::OnceLock;
 
@@ -11,7 +11,7 @@ static APP_CONTEXT: OnceLock<(JavaVM, GlobalRef)> = OnceLock::new();
 mod jni {
     use crate::APP_CONTEXT;
     use android_logger::Config;
-    use jni::objects::{GlobalRef, JObject, JValue};
+    use robusta_jni::jni::objects::{GlobalRef, JObject, JValue};
     use log::info;
     use robusta_jni::convert::{IntoJavaValue, Signature, TryFromJavaValue, TryIntoJavaValue};
     use robusta_jni::jni::errors::Result as JniResult;

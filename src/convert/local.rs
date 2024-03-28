@@ -16,7 +16,8 @@ impl<'a, 'b> Local<'a, 'b> {
         where
             'a: 'c,
     {
-        self.obj
+        todo!()
+        // self.obj
     }
 }
 

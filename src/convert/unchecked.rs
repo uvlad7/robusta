@@ -14,6 +14,7 @@
 use std::ptr::slice_from_raw_parts;
 use jni::objects::{JList, JObject, JString, JValue};
 use jni::objects::{JClass, JByteBuffer, JThrowable};
+use jni::objects::{JObjectArray, JBooleanArray, JByteArray, JCharArray, JDoubleArray, JFloatArray, JIntArray, JLongArray, JShortArray};
 use jni::sys::{jboolean, jbyte, jchar, jsize};
 use jni::sys::{JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
@@ -46,7 +47,7 @@ pub trait IntoJavaValue<'env>: Signature {
     const SIG_TYPE: &'static str = <Self as Signature>::SIG_TYPE;
 
     /// Perform the conversion.
-    fn into(self, env: &JNIEnv<'env>) -> Self::Target;
+    fn into(self, env: &mut JNIEnv<'env>) -> Self::Target;
 }
 
 /// Conversion trait from Java values to Rust values, analogous to [From]. Used when converting types that are input to JNI-available functions.
@@ -66,7 +67,7 @@ pub trait FromJavaValue<'env: 'borrow, 'borrow>: Signature {
     const SIG_TYPE: &'static str = <Self as Signature>::SIG_TYPE;
 
     /// Perform the conversion.
-    fn from(s: Self::Source, env: &'borrow JNIEnv<'env>) -> Self;
+    fn from(s: Self::Source, env: &'borrow mut JNIEnv<'env>) -> Self;
 }
 
 impl<'env, T> IntoJavaValue<'env> for T
@@ -75,7 +76,7 @@ where
 {
     type Target = T;
 
-    fn into(self, _: &JNIEnv<'env>) -> Self::Target {
+    fn into(self, _: &mut JNIEnv<'env>) -> Self::Target {
         self
     }
 }
@@ -86,7 +87,7 @@ where
 {
     type Source = T;
 
-    fn from(t: Self::Source, _: &'borrow JNIEnv<'env>) -> Self {
+    fn from(t: Self::Source, _: &'borrow mut JNIEnv<'env>) -> Self {
         t
     }
 }
@@ -98,7 +99,7 @@ impl Signature for String {
 impl<'env> IntoJavaValue<'env> for String {
     type Target = JString<'env>;
 
-    fn into(self, env: &JNIEnv<'env>) -> Self::Target {
+    fn into(self, env: &mut JNIEnv<'env>) -> Self::Target {
         env.new_string(self).unwrap()
     }
 }
@@ -106,15 +107,15 @@ impl<'env> IntoJavaValue<'env> for String {
 impl<'env: 'borrow, 'borrow> FromJavaValue<'env, 'borrow> for String {
     type Source = JString<'env>;
 
-    fn from(s: Self::Source, env: &'borrow JNIEnv<'env>) -> Self {
-        env.get_string(s).unwrap().into()
+    fn from(s: Self::Source, env: &'borrow mut JNIEnv<'env>) -> Self {
+        env.get_string(&s).unwrap().into()
     }
 }
 
 impl<'env> IntoJavaValue<'env> for bool {
     type Target = jboolean;
 
-    fn into(self, _env: &JNIEnv<'env>) -> Self::Target {
+    fn into(self, _env: &mut JNIEnv<'env>) -> Self::Target {
         if self {
             JNI_TRUE
         } else {
@@ -130,7 +131,7 @@ impl Signature for bool {
 impl<'env: 'borrow, 'borrow> FromJavaValue<'env, 'borrow> for bool {
     type Source = jboolean;
 
-    fn from(s: Self::Source, _env: &JNIEnv<'env>) -> Self {
+    fn from(s: Self::Source, _env: &mut JNIEnv<'env>) -> Self {
         s == JNI_TRUE
     }
 }
@@ -142,7 +143,7 @@ impl Signature for char {
 impl<'env> IntoJavaValue<'env> for char {
     type Target = jchar;
 
-    fn into(self, _env: &JNIEnv<'env>) -> Self::Target {
+    fn into(self, _env: &mut JNIEnv<'env>) -> Self::Target {
         self as jchar
     }
 }
@@ -150,7 +151,7 @@ impl<'env> IntoJavaValue<'env> for char {
 impl<'env: 'borrow, 'borrow> FromJavaValue<'env, 'borrow> for char {
     type Source = jchar;
 
-    fn from(s: Self::Source, _env: &JNIEnv<'env>) -> Self {
+    fn from(s: Self::Source, _env: &mut JNIEnv<'env>) -> Self {
         std::char::decode_utf16(std::iter::once(s))
             .next()
             .unwrap()
@@ -166,7 +167,7 @@ pub trait BoxedFromJavaValue<'env: 'borrow, 'borrow, T, U>
     type Source: JavaValue<'env>;
     const SIG_TYPE: &'static str = <Box<[T]> as Signature>::SIG_TYPE;
 
-    fn boxed_from(s: Self::Source, env: &'borrow JNIEnv<'env>) -> Box<[T]>;
+    fn boxed_from(s: Self::Source, env: &'borrow mut JNIEnv<'env>) -> Box<[T]>;
 }
 
 pub trait BoxedIntoJavaValue<'env, T, U>
@@ -177,38 +178,38 @@ pub trait BoxedIntoJavaValue<'env, T, U>
     type Target: JavaValue<'env>;
     const SIG_TYPE: &'static str = <Box<[T]> as Signature>::SIG_TYPE;
 
-    fn boxed_into(t: Box<[T]>, env: &JNIEnv<'env>) -> Self::Target;
+    fn boxed_into(t: Box<[T]>, env: &mut JNIEnv<'env>) -> Self::Target;
 }
 
 impl<'env: 'borrow, 'borrow> BoxedFromJavaValue<'env, 'borrow, bool, <bool as FromJavaValue<'env, 'borrow>>::Source> for (bool, <bool as FromJavaValue<'env, 'borrow>>::Source) {
-    type Source = JObject<'env>;
+    type Source = JBooleanArray<'env>;
 
-    fn boxed_from(s: Self::Source, env: &'borrow JNIEnv<'env>) -> Box<[bool]> {
-        let len = env.get_array_length(s.into_raw()).unwrap();
+    fn boxed_from(s: Self::Source, env: &'borrow mut JNIEnv<'env>) -> Box<[bool]> {
+        let len = env.get_array_length(&s).unwrap();
         let mut buf = vec![JNI_FALSE; len as usize].into_boxed_slice();
-        env.get_boolean_array_region(s.into_raw(), 0, &mut *buf).unwrap();
+        env.get_boolean_array_region(&s, 0, &mut *buf).unwrap();
 
-        buf.iter().map(|&b| FromJavaValue::from(b, &env)).collect()
+        buf.iter().map(|&b| FromJavaValue::from(b, env)).collect()
     }
 }
 
 impl<'env> BoxedIntoJavaValue<'env, bool, <bool as IntoJavaValue<'env>>::Target> for (bool, <bool as IntoJavaValue<'env>>::Target) {
-    type Target = JObject<'env>;
+    type Target = JBooleanArray<'env>;
 
-    fn boxed_into(t: Box<[bool]>, env: &JNIEnv<'env>) -> Self::Target {
+    fn boxed_into(t: Box<[bool]>, env: &mut JNIEnv<'env>) -> Self::Target {
         let len = t.len();
         let buf: Vec<_> = t.iter().map(|&b| Into::into(b)).collect();
         let raw = env.new_boolean_array(len as i32).unwrap();
-        env.set_boolean_array_region(raw, 0, &buf).unwrap();
-        unsafe { Self::Target::from_raw(raw) }
+        env.set_boolean_array_region(&raw, 0, &buf).unwrap();
+        raw
     }
 }
 
 impl<'env: 'borrow, 'borrow> BoxedFromJavaValue<'env, 'borrow, i8, <i8 as FromJavaValue<'env, 'borrow>>::Source> for (i8, <i8 as FromJavaValue<'env, 'borrow>>::Source) {
-    type Source = JObject<'env>;
+    type Source = JByteArray<'env>;
 
-    fn boxed_from(s: Self::Source, env: &'borrow JNIEnv<'env>) -> Box<[i8]> {
-        let buf = env.convert_byte_array(s.into_raw()).unwrap();
+    fn boxed_from(s: Self::Source, env: &'borrow mut JNIEnv<'env>) -> Box<[i8]> {
+        let buf = env.convert_byte_array(&s).unwrap();
         let boxed_slice = buf.into_boxed_slice();
         let conv = unsafe { &*slice_from_raw_parts(boxed_slice.as_ref().as_ptr() as *const i8, boxed_slice.as_ref().len()) };
         conv.into()
@@ -216,11 +217,11 @@ impl<'env: 'borrow, 'borrow> BoxedFromJavaValue<'env, 'borrow, i8, <i8 as FromJa
 }
 
 impl<'env> BoxedIntoJavaValue<'env, i8, <i8 as IntoJavaValue<'env>>::Target> for (i8, <i8 as IntoJavaValue<'env>>::Target) {
-    type Target = JObject<'env>;
+    type Target = JByteArray<'env>;
 
-    fn boxed_into(t: Box<[i8]>, env: &JNIEnv<'env>) -> Self::Target {
+    fn boxed_into(t: Box<[i8]>, env: &mut JNIEnv<'env>) -> Self::Target {
         let conv = unsafe { &*slice_from_raw_parts(t.as_ref().as_ptr() as *const u8, t.as_ref().len()) };
-        unsafe { Self::Target::from_raw(env.byte_array_from_slice(conv).unwrap()) }
+        env.byte_array_from_slice(conv).unwrap()
     }
 }
 
@@ -230,16 +231,15 @@ module_disambiguation j_type;
 [b] [JString];
 [c] [JClass];
 [d] [JByteBuffer];
-// TODO: Enable after migration
-// [e] [JObjectArray];
-// [f] [JBooleanArray];
-// [g] [JByteArray];
-// [h] [JCharacterArray];
-// [i] [JDoubleArray];
-// [j] [JFloatArray];
-// [k] [JIntegerArray];
-// [l] [JLongArray];
-// [m] [JShortArray];
+[e] [JObjectArray];
+[f] [JBooleanArray];
+[g] [JByteArray];
+[h] [JCharArray];
+[i] [JDoubleArray];
+[j] [JFloatArray];
+[k] [JIntArray];
+[l] [JLongArray];
+[m] [JShortArray];
 [n] [JThrowable];
 )]
 mod box_impl {
@@ -249,21 +249,21 @@ mod box_impl {
             Box<[T]>: Signature,
             T: FromJavaValue<'env, 'borrow, Source = j_type<'env>>,
     {
-        // TODO: Replace with JObjectArray after migration to 0.21
-        type Source = JObject<'env>;
+        type Source = JObjectArray<'env>;
 
-        fn boxed_from(s: Self::Source, env: &'borrow JNIEnv<'env>) -> Box<[T]> {
-            let len = env.get_array_length(s.into_raw()).unwrap();
+        fn boxed_from(s: Self::Source, env: &'borrow mut JNIEnv<'env>) -> Box<[T]> {
+            let len = env.get_array_length(&s).unwrap();
             let mut buf = Vec::with_capacity(len as usize);
             for idx in 0..len {
                 // TODO: use AutoLocal - and convert immediately there - for types that
                 // don't hold local ref, so env.delete_local_ref is safe
-                buf.push(env.get_object_array_element(s.into_raw(), idx).unwrap());
+                buf.push(env.get_object_array_element(&s, idx).unwrap());
             }
 
-            buf.into_boxed_slice().iter()
-                .map(|&b| T::from(Into::into(b), &env))
-                .collect()
+            // buf.into_boxed_slice().iter()
+            //     .map(|&b| T::from(Into::into(b), env))
+            //     .collect()
+            todo!()
         }
     }
 
@@ -272,10 +272,9 @@ mod box_impl {
             Box<[T]>: Signature,
             T: IntoJavaValue<'env, Target = j_type<'env>>,
     {
-        // TODO: Replace with JObjectArray after migration to 0.21
-        type Target = JObject<'env>;
+        type Target = JObjectArray<'env>;
 
-        fn boxed_into(t: Box<[T]>, env: &JNIEnv<'env>) -> Self::Target {
+        fn boxed_into(t: Box<[T]>, env: &mut JNIEnv<'env>) -> Self::Target {
             let vec = t.into_vec();
             let raw = env.new_object_array(
                 vec.len() as jsize, <T as Signature>::SIG_TYPE, JObject::null()
@@ -283,9 +282,10 @@ mod box_impl {
             for (idx, elem) in vec.into_iter().enumerate() {
                 // TODO: use AutoLocal - and convert immediately there - for types that
                 // don't hold local ref, so env.delete_local_ref is safe
-                env.set_object_array_element(raw, idx as jsize, T::into(elem, env)).unwrap();
+                todo!()
+                // env.set_object_array_element(&raw, idx as jsize, T::into(elem, env)).unwrap();
             }
-            unsafe { Self::Target::from_raw(raw) }
+            raw
         }
     }
 }
@@ -298,7 +298,7 @@ impl<'env: 'borrow, 'borrow, T> FromJavaValue<'env, 'borrow> for Box<[T]>
 {
     type Source = <(T, <T as FromJavaValue<'env, 'borrow>>::Source) as BoxedFromJavaValue<'env, 'borrow, T, <T as FromJavaValue<'env, 'borrow>>::Source>>::Source;
 
-    fn from(s: Self::Source, env: &'borrow JNIEnv<'env>) -> Self {
+    fn from(s: Self::Source, env: &'borrow mut JNIEnv<'env>) -> Self {
         <(T, <T as FromJavaValue<'env, 'borrow>>::Source) as BoxedFromJavaValue<T, <T as FromJavaValue<'env, 'borrow>>::Source>>::boxed_from(s, env)
     }
 }
@@ -311,7 +311,7 @@ impl<'env, T> IntoJavaValue<'env> for Box<[T]>
 {
     type Target = <(T, <T as IntoJavaValue<'env>>::Target) as BoxedIntoJavaValue<'env, T, <T as IntoJavaValue<'env>>::Target>>::Target;
 
-    fn into(self, env: &JNIEnv<'env>) -> Self::Target {
+    fn into(self, env: &mut JNIEnv<'env>) -> Self::Target {
         <(T, <T as IntoJavaValue<'env>>::Target) as BoxedIntoJavaValue<T, <T as IntoJavaValue<'env>>::Target>>::boxed_into(self, env)
     }
 }
@@ -330,7 +330,7 @@ where
 {
     type Target = JObject<'env>;
 
-    fn into(self, env: &JNIEnv<'env>) -> Self::Target {
+    fn into(self, env: &mut JNIEnv<'env>) -> Self::Target {
         let obj = env
             .new_object(
                 "java/util/ArrayList",
@@ -338,15 +338,16 @@ where
                 &[JValue::Int(self.len() as i32)],
             )
             .unwrap();
-        let list = JList::from_env(&env, obj).unwrap();
+        let list = JList::from_env(env, &obj).unwrap();
 
-        self.into_iter()
-            .map(|el| JavaValue::autobox(IntoJavaValue::into(el, &env), &env))
-            .for_each(|el| {
-                list.add(el).unwrap();
-            });
+        todo!();
+        // self.into_iter()
+        //     .map(|el| JavaValue::autobox(IntoJavaValue::into(el, env), env))
+        //     .for_each(|el| {
+        //         list.add(env,&el).unwrap();
+        //     });
 
-        list.into()
+        obj
     }
 }
 
@@ -357,13 +358,16 @@ where
 {
     type Source = JObject<'env>;
 
-    fn from(s: Self::Source, env: &'borrow JNIEnv<'env>) -> Self {
-        let list = JList::from_env(env, s).unwrap();
+    fn from(s: Self::Source, env: &'borrow mut JNIEnv<'env>) -> Self {
+        let list = JList::from_env(env, &s).unwrap();
 
-        list.iter()
-            .unwrap()
-            .map(|el| T::from(U::unbox(el, env), env))
-            .collect()
+        let mut iterator = list.iter(env).unwrap();
+        let mut res = vec![];
+        while let Some(el) = iterator.next(env).unwrap() {
+            todo!()
+            // res.push(T::from(U::unbox(el, env), env));
+        }
+        res
     }
 }
 
@@ -377,7 +381,7 @@ where
 {
     type Target = <T as IntoJavaValue<'env>>::Target;
 
-    fn into(self, env: &JNIEnv<'env>) -> Self::Target {
+    fn into(self, env: &mut JNIEnv<'env>) -> Self::Target {
         self.map(|s| IntoJavaValue::into(s, env)).unwrap()
     }
 }
@@ -389,7 +393,7 @@ where
 {
     type Source = <T as FromJavaValue<'env, 'borrow>>::Source;
 
-    fn from(s: Self::Source, env: &'borrow JNIEnv<'env>) -> Self {
+    fn from(s: Self::Source, env: &'borrow mut JNIEnv<'env>) -> Self {
         if env.is_same_object(s.clone().into(), JObject::null()).unwrap() {
             None
         } else { Some(T::from(s, env)) }
@@ -402,7 +406,7 @@ where
     <T as IntoJavaValue<'env>>::Target: Default,
 {
     type Target = <T as IntoJavaValue<'env>>::Target;
-    fn into(self, env: &JNIEnv<'env>) -> Self::Target {
+    fn into(self, env: &mut JNIEnv<'env>) -> Self::Target {
         match self {
             None => { Self::Target::default() }
             Some(value) => { T::into(value, env) }
