@@ -404,13 +404,12 @@ where
 impl<'env: 'borrow, 'borrow, T> TryFromJavaValue<'env, 'borrow> for Option<T>
 where
     T: TryFromJavaValue<'env, 'borrow>,
-    // TODO: Remove Clone after migration
-    <T as TryFromJavaValue<'env, 'borrow>>::Source: Into<JObject<'env>> + Clone,
+    <T as TryFromJavaValue<'env, 'borrow>>::Source: AsRef<JObject<'env>>,
 {
     type Source = <T as TryFromJavaValue<'env, 'borrow>>::Source;
 
     fn try_from(s: Self::Source, env: &'borrow mut JNIEnv<'env>) -> Result<Self> {
-        if env.is_same_object(s.clone().into(), JObject::null())? {
+        if env.is_same_object(s.as_ref(), JObject::null())? {
             Ok(None)
         } else { Ok(Some(T::try_from(s, env)?)) }
     }

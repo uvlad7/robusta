@@ -389,12 +389,12 @@ where
 impl<'env: 'borrow, 'borrow, T> FromJavaValue<'env, 'borrow> for Option<T>
 where
     T: FromJavaValue<'env, 'borrow>,
-    <T as FromJavaValue<'env, 'borrow>>::Source: Into<JObject<'env>> + Clone,
+    <T as FromJavaValue<'env, 'borrow>>::Source: AsRef<JObject<'env>>,
 {
     type Source = <T as FromJavaValue<'env, 'borrow>>::Source;
 
     fn from(s: Self::Source, env: &'borrow mut JNIEnv<'env>) -> Self {
-        if env.is_same_object(s.clone().into(), JObject::null()).unwrap() {
+        if env.is_same_object(s.as_ref(), JObject::null()).unwrap() {
             None
         } else { Some(T::from(s, env)) }
     }
