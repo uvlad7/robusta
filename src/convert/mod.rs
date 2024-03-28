@@ -92,28 +92,32 @@ pub trait ArrSignature {
     const ARR_SIG_TYPE: &'static str;
 }
 
-pub enum JValueWrapper<'a> {
-    Owned(JValueOwned<'a>),
-    Borrowed(JValue<'a, 'a>),
-}
+pub struct JValueWrapper<'a>(pub JValue<'a, 'a>);
+pub struct JValueOwnedWrapper<'a>(pub JValueOwned<'a>);
 
 impl<'a> From<JValue<'a, 'a>> for JValueWrapper<'a> {
     fn from(v: JValue<'a, 'a>) -> Self {
-        JValueWrapper::Borrowed(v)
+        JValueWrapper(v)
     }
 }
 
-impl<'a> From<JValueOwned<'a>> for JValueWrapper<'a> {
-    fn from(v: JValueOwned<'a, >) -> Self {
-        JValueWrapper::Owned(v)
+impl<'a> From<JValueWrapper<'a>> for JValue<'a, 'a> {
+    fn from(v: JValueWrapper<'a>) -> Self {
+        v.0
     }
 }
 
-// impl<'a> From<JValueWrapper<'a>> for JValue<'a> {
-//     fn from(v: JValueWrapper<'a>) -> Self {
-//         v.0
-//     }
-// }
+impl<'a> From<JValueOwned<'a>> for JValueOwnedWrapper<'a> {
+    fn from(v: JValueOwned<'a>) -> Self {
+        JValueOwnedWrapper(v)
+    }
+}
+
+impl<'a> From<JValueOwnedWrapper<'a>> for JValueOwned<'a> {
+    fn from(v: JValueOwnedWrapper<'a>) -> Self {
+        v.0
+    }
+}
 
 impl<'env> Signature for JList<'env, 'env, 'env> {
     const SIG_TYPE: &'static str = "Ljava/util/List;";
@@ -167,16 +171,27 @@ impl<'env> JavaValue<'env> for () {
     fn unbox(_s: JObject<'env>, _env: &mut JNIEnv<'env>) -> Self {}
 }
 
-// impl<'a> TryFrom<JValueWrapper<'a>> for () {
-//     type Error = jni::errors::Error;
-//
-//     fn try_from(value: JValueWrapper<'a>) -> Result<Self, Self::Error> {
-//         match value.0 {
-//             JValue::Void => Ok(()),
-//             _ => Err(Error::WrongJValueType("void", value.0.type_name()).into()),
-//         }
-//     }
-// }
+impl<'a> TryFrom<JValueWrapper<'a>> for () {
+    type Error = jni::errors::Error;
+
+    fn try_from(value: JValueWrapper<'a>) -> Result<Self, Self::Error> {
+        match value.0 {
+            JValue::Void => Ok(()),
+            _ => Err(Error::WrongJValueType("void", value.0.type_name()).into()),
+        }
+    }
+}
+
+impl<'a> TryFrom<JValueOwnedWrapper<'a>> for () {
+    type Error = jni::errors::Error;
+
+    fn try_from(value: JValueOwnedWrapper<'a>) -> Result<Self, Self::Error> {
+        match value.0 {
+            JValueOwned::Void => Ok(()),
+            _ => Err(Error::WrongJValueType("void", value.0.type_name()).into()),
+        }
+    }
+}
 
 #[duplicate_item(
 j_type boxed boxed_rtype sig unbox_method j_val_type j_val_type_name;
@@ -227,16 +242,27 @@ mod jvalue_types {
         }
     }
 
-    // impl<'a> TryFrom<JValueWrapper<'a>> for j_type {
-    //     type Error = jni::errors::Error;
-    //
-    //     fn try_from(value: JValueWrapper<'a>) -> Result<Self, Self::Error> {
-    //         match value.0 {
-    //             JValue::j_val_type(b) => Ok(b),
-    //             _ => Err(Error::WrongJValueType(j_val_type_name, value.0.type_name()).into()),
-    //         }
-    //     }
-    // }
+    impl<'a> TryFrom<JValueWrapper<'a>> for j_type {
+        type Error = jni::errors::Error;
+
+        fn try_from(value: JValueWrapper<'a>) -> Result<Self, Self::Error> {
+            match value.0 {
+                JValue::j_val_type(b) => Ok(b),
+                _ => Err(Error::WrongJValueType(j_val_type_name, value.0.type_name()).into()),
+            }
+        }
+    }
+
+    impl<'a> TryFrom<JValueOwnedWrapper<'a>> for j_type {
+        type Error = jni::errors::Error;
+
+        fn try_from(value: JValueOwnedWrapper<'a>) -> Result<Self, Self::Error> {
+            match value.0 {
+                JValueOwned::j_val_type(b) => Ok(b),
+                _ => Err(Error::WrongJValueType(j_val_type_name, value.0.type_name()).into()),
+            }
+        }
+    }
 }
 
 // TODO: Same for JMap, JList, use them as Target/Source
@@ -268,16 +294,27 @@ mod jobject_types {
         }
     }
 
-    // impl<'env> TryFrom<JValueWrapper<'env>> for j_type {
-    //     type Error = jni::errors::Error;
-    //
-    //     fn try_from(value: JValueWrapper<'env>) -> Result<Self, Self::Error> {
-    //         match value.0 {
-    //             JValue::Object(o) => Ok(From::from(o)),
-    //             _ => Err(Error::WrongJValueType(name, value.0.type_name()).into()),
-    //         }
-    //     }
-    // }
+    impl<'env> TryFrom<JValueWrapper<'env>> for &'env j_type {
+        type Error = jni::errors::Error;
+
+        fn try_from(value: JValueWrapper<'env>) -> Result<Self, Self::Error> {
+            match value.0 {
+                JValue::Object(o) => Ok(From::from(o)),
+                _ => Err(Error::WrongJValueType(name, value.0.type_name()).into()),
+            }
+        }
+    }
+
+    impl<'env> TryFrom<JValueOwnedWrapper<'env>> for j_type {
+        type Error = jni::errors::Error;
+
+        fn try_from(value: JValueOwnedWrapper<'env>) -> Result<Self, Self::Error> {
+            match value.0 {
+                JValueOwned::Object(o) => Ok(From::from(o)),
+                _ => Err(Error::WrongJValueType(name, value.0.type_name()).into()),
+            }
+        }
+    }
 }
 
 #[duplicate_item(
