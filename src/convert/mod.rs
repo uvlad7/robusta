@@ -265,8 +265,6 @@ mod jvalue_types {
     }
 }
 
-// TODO: Same for JMap, JList, use them as Target/Source
-
 #[duplicate_item(
 module_disambiguation j_type sig name;
 [a] [JString < 'env >]      ["Ljava/lang/String;"]     ["string"];

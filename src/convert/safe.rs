@@ -266,7 +266,7 @@ mod box_impl {
     impl<'env: 'borrow, 'borrow, T> BoxedTryFromJavaValue<'env, 'borrow, T, j_type<'env>> for (T, j_type<'env>)
         where
             Box<[T]>: Signature,
-            T: TryFromJavaValue<'env, 'borrow, Source = j_type<'env>>,
+            for<'inner_borrow> T: TryFromJavaValue<'env, 'inner_borrow, Source = j_type<'env>>,
     {
         type Source = JObjectArray<'env>;
 
@@ -276,13 +276,11 @@ mod box_impl {
             for idx in 0..len {
                 // TODO: use AutoLocal - and convert immediately there - for types that
                 // don't hold local ref, so env.delete_local_ref is safe
-                buf.push(env.get_object_array_element(&s, idx)?);
+                let b = env.get_object_array_element(&s, idx)?;
+                buf.push(T::try_from(Into::into(b), env)?);
             }
 
-            // buf.into_boxed_slice().iter()
-            //     .map(|&b| T::try_from(Into::into(b), env))
-            //     .collect()
-            todo!()
+            Ok(buf.into_boxed_slice())
         }
     }
 
@@ -360,7 +358,7 @@ where
 
 impl<'env: 'borrow, 'borrow, T, U> TryFromJavaValue<'env, 'borrow> for Vec<T>
 where
-    T: TryFromJavaValue<'env, 'borrow, Source = U>,
+    for<'inner_borrow> T: TryFromJavaValue<'env, 'inner_borrow, Source = U>,
     U: JavaValue<'env>,
 {
     type Source = JObject<'env>;
@@ -369,10 +367,10 @@ where
         let list = JList::from_env(env, &s)?;
 
         let mut iterator = list.iter(env)?;
-        let mut res = vec![];
+        let len = list.size(env)?;
+        let mut res = Vec::with_capacity(len as usize);
         while let Some(el) = iterator.next(env)? {
-            todo!()
-            // res.push( T::try_from(U::unbox(el, env), env)?);
+            res.push(T::try_from(U::unbox(el, env), env)?);
         }
         Ok(res)
     }
