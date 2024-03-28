@@ -58,12 +58,10 @@ pub use robusta_codegen::Signature;
 pub use robusta_codegen::ArrSignature;
 pub use safe::*;
 pub use unchecked::*;
-pub use local::*;
 
 pub mod field;
 pub mod safe;
 pub mod unchecked;
-pub mod local;
 
 /// A trait for types that are ffi-safe to use with JNI. It is implemented for primitives, [JObject](jni::objects::JObject) and [jobject](jni::sys::jobject).
 /// Users that want automatic conversion should instead implement [FromJavaValue], [IntoJavaValue] and/or [TryFromJavaValue], [TryIntoJavaValue]
