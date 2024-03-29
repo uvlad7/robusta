@@ -154,7 +154,7 @@ fn from_java_value_macro_derive_impl(input: DeriveInput) -> syn::Result<TokenStr
             <#field_type as Signature>::SIG_TYPE
         };
         quote_spanned! { f.span() =>
-            let #field_ident: #field_type = ::robusta_jni::convert::FromJavaValue::from(::core::convert::TryInto::try_into(::robusta_jni::convert::JValueWrapper::from(env.get_field(source, #field_name, #field_type_sig).unwrap())).unwrap(), env);
+            let #field_ident: #field_type = ::robusta_jni::convert::FromJavaValue::from(::core::convert::TryInto::try_into(::robusta_jni::convert::JValueOwnedWrapper::from(env.get_field(source, #field_name, #field_type_sig).unwrap())).unwrap(), env);
         }
     }).collect();
 
@@ -233,7 +233,7 @@ fn tryfrom_java_value_macro_derive_impl(input: DeriveInput) -> syn::Result<Token
             <#field_type as Signature>::SIG_TYPE
         };
         quote_spanned! { f.span() =>
-            let #field_ident: #field_type = ::robusta_jni::convert::TryFromJavaValue::try_from(::core::convert::TryInto::try_into(::robusta_jni::convert::JValueWrapper::from(env.get_field(source, #field_name, #field_type_sig)?))?, env)?;
+            let #field_ident: #field_type = ::robusta_jni::convert::TryFromJavaValue::try_from(::core::convert::TryInto::try_into(::robusta_jni::convert::JValueOwnedWrapper::from(env.get_field(source, #field_name, #field_type_sig)?))?, env)?;
         }
     }).collect();
 

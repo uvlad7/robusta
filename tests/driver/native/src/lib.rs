@@ -57,7 +57,7 @@ impl<'env: 'borrow, 'borrow> FromJavaValue<'env, 'borrow> for StringArr {
 pub mod jni {
     use std::convert::TryInto;
 
-    use robusta_jni::convert::{Field, JavaValue, JValueWrapper};
+    use robusta_jni::convert::{Field, JavaValue, JValueOwnedWrapper};
     use robusta_jni::convert::{IntoJavaValue, FromJavaValue, Signature, ArrSignature, TryFromJavaValue, TryIntoJavaValue};
     use robusta_jni::jni::errors::Result as JniResult;
     use robusta_jni::jni::JNIEnv;
@@ -89,8 +89,8 @@ pub mod jni {
             env_logger::init();
         }
 
-        pub extern "jni" fn userCountStatus(env: &JNIEnv) -> String {
-            let users_count: i32 = JValueWrapper::from(
+        pub extern "jni" fn userCountStatus(env: &mut JNIEnv) -> String {
+            let users_count: i32 = JValueOwnedWrapper::from(
                 env.get_static_field("User", "TOTAL_USERS_COUNT", "I")
                     .unwrap(),
             )
