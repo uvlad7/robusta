@@ -71,7 +71,7 @@ impl<'ctx> Fold for ExternJNIMethodTransformer<'ctx> {
         let new_block: Block = match &self.call_type {
             CallType::Unchecked { .. } => {
                 parse_quote_spanned! { node.span() => {
-                    ::robusta_jni::convert::IntoJavaValue::into(#method_call, &env)
+                    ::robusta_jni::convert::IntoJavaValue::into(#method_call, env)
                 }}
             }
 
@@ -91,7 +91,7 @@ impl<'ctx> Fold for ExternJNIMethodTransformer<'ctx> {
                         })
                         .collect();
 
-                    inputs.push(parse_quote!(&env));
+                    inputs.push(parse_quote!(&mut env));
                     inputs
                 };
                 let outer_signature = {
@@ -116,7 +116,7 @@ impl<'ctx> Fold for ExternJNIMethodTransformer<'ctx> {
                             subpat: None,
                         })),
                         colon_token: Token![:](s.inputs.span()),
-                        ty: Box::new(parse_quote! { &'borrow ::robusta_jni::jni::JNIEnv<'env> }),
+                        ty: Box::new(parse_quote! { &'borrow mut ::robusta_jni::jni::JNIEnv<'env> }),
                     }));
 
                     let outer_signature_span = s.span();
@@ -157,7 +157,7 @@ impl<'ctx> Fold for ExternJNIMethodTransformer<'ctx> {
 
                 parse_quote_spanned! { node.span() => {
                     #outer_signature {
-                        ::robusta_jni::convert::TryIntoJavaValue::try_into(#method_call, &env)
+                        ::robusta_jni::convert::TryIntoJavaValue::try_into(#method_call, env)
                     }
 
                     match outer(#outer_call_inputs) {
@@ -680,8 +680,8 @@ impl JNISignature {
                         Pat::Ident(PatIdent { ident, .. }) => {
                             let input_param: Expr = {
                                 match self.call_type {
-                                    CallType::Safe(_) => parse_quote_spanned! { ident.span() => ::robusta_jni::convert::TryFromJavaValue::try_from(#ident, &env)? },
-                                    CallType::Unchecked { .. } => parse_quote_spanned! { ident.span() => ::robusta_jni::convert::FromJavaValue::from(#ident, &env) }
+                                    CallType::Safe(_) => parse_quote_spanned! { ident.span() => ::robusta_jni::convert::TryFromJavaValue::try_from(#ident, env)? },
+                                    CallType::Unchecked { .. } => parse_quote_spanned! { ident.span() => ::robusta_jni::convert::FromJavaValue::from(#ident, env) }
                                 }
                             };
                             input_param

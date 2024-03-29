@@ -263,9 +263,12 @@ impl<'ctx> Fold for ImportedMethodTransformer<'ctx> {
 
                 let java_signature = quote_spanned! { signature.span() => ["(", #input_types_conversions ")", #output_conversion].join("") };
 
-                let input_conversions = signature.inputs.iter().fold(TokenStream::new(), |mut tok, input| {
+                let mut input_conversions = TokenStream::new();
+                let mut args_conversions = TokenStream::new();
+
+                signature.inputs.iter().for_each(|input| {
                     match input {
-                        FnArg::Receiver(_) => { tok }
+                        FnArg::Receiver(_) => {}
                         FnArg::Typed(t) => {
                             let ty = &t.ty;
                             let pat: TokenStream = {
@@ -278,12 +281,15 @@ impl<'ctx> Fold for ImportedMethodTransformer<'ctx> {
                             };
 
                             let conversion: TokenStream = if let CallType::Safe(_) = call_type {
-                                quote_spanned! { ty.span() => ::std::convert::Into::into(<#ty as ::robusta_jni::convert::TryIntoJavaValue>::try_into(#pat, &env)?), }
+                                quote_spanned! { ty.span() => let #pat = ::robusta_jni::jni::objects::JValueOwned::from(<#ty as ::robusta_jni::convert::TryIntoJavaValue>::try_into(#pat, env)?);
+                                }
                             } else {
-                                quote_spanned! { ty.span() => ::std::convert::Into::into(<#ty as ::robusta_jni::convert::IntoJavaValue>::into(#pat, &env)), }
+                                quote_spanned! { ty.span() => let #pat = ::robusta_jni::jni::objects::JValueOwned::from(<#ty as ::robusta_jni::convert::IntoJavaValue>::into(#pat, env));
+                                }
                             };
-                            conversion.to_tokens(&mut tok);
-                            tok
+                            conversion.to_tokens(&mut input_conversions);
+                            let arg_conversion = quote_spanned! { ty.span() => ::robusta_jni::jni::objects::JValue::from(&#pat), };
+                            arg_conversion.to_tokens(&mut args_conversions);
                         }
                     }
                 });
@@ -292,25 +298,26 @@ impl<'ctx> Fold for ImportedMethodTransformer<'ctx> {
                     CallType::Safe(_) => {
                         if is_constructor {
                             quote_spanned! { output_type_span =>
-                                res.and_then(|v| ::robusta_jni::convert::TryFromJavaValue::try_from(v, &env))
+                                ::robusta_jni::convert::TryFromJavaValue::try_from(res, env)
                             }
                         } else {
                             quote_spanned! { output_type_span =>
-                                res.and_then(|v| ::std::convert::TryInto::try_into(::robusta_jni::convert::JValueOwnedWrapper::from(v)))
-                                   .and_then(|v| ::robusta_jni::convert::TryFromJavaValue::try_from(v, &env))
+                                ::std::convert::TryInto::try_into(::robusta_jni::convert::JValueOwnedWrapper::from(res))
+                                   .and_then(|v| ::robusta_jni::convert::TryFromJavaValue::try_from(v, env))
                             }
                         }
                     }
                     CallType::Unchecked(_) => {
                         if is_constructor {
                             quote_spanned! { output_type_span =>
-                                ::robusta_jni::convert::FromJavaValue::from(res, &env)
+                                ::robusta_jni::convert::FromJavaValue::from(res, env)
                             }
                         } else {
                             quote_spanned! { output_type_span =>
-                                ::std::convert::TryInto::try_into(::robusta_jni::convert::JValueOwnedWrapper::from(res))
-                                    .map(|v| ::robusta_jni::convert::FromJavaValue::from(v, &env))
-                                    .unwrap()
+                                ::robusta_jni::convert::FromJavaValue::from(
+                                    ::std::convert::TryInto::try_into(::robusta_jni::convert::JValueOwnedWrapper::from(res)).unwrap(),
+                                    env
+                                )
                             }
                         }
                     }
@@ -382,15 +389,19 @@ impl<'ctx> Fold for ImportedMethodTransformer<'ctx> {
                         match call_type {
                             CallType::Safe(_) => {
                                 parse_quote_spanned! { self_span => {
-                                    let env: &'_ ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
-                                    let res = env.call_method(::robusta_jni::convert::JavaValue::autobox(::robusta_jni::convert::TryIntoJavaValue::try_into(self, &env)?, &env), #java_method_name, #java_signature, &[#input_conversions]);
+                                    let env: &'_ mut ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
+                                    let self_obj = ::robusta_jni::convert::JavaValue::autobox(::robusta_jni::convert::TryIntoJavaValue::try_into(self, env)?, env);
+                                    #input_conversions
+                                    let res = env.call_method(self_obj, #java_method_name, #java_signature, &[#args_conversions])?;
                                     #return_expr
                                 }}
                             }
                             CallType::Unchecked(_) => {
                                 parse_quote_spanned! { self_span => {
-                                    let env: &'_ ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
-                                    let res = env.call_method(::robusta_jni::convert::JavaValue::autobox(::robusta_jni::convert::IntoJavaValue::into(self, &env), &env), #java_method_name, #java_signature, &[#input_conversions]).unwrap();
+                                    let env: &'_ mut ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
+                                    let self_obj = ::robusta_jni::convert::JavaValue::autobox(::robusta_jni::convert::IntoJavaValue::into(self, env), env);
+                                    #input_conversions
+                                    let res = env.call_method(self_obj, #java_method_name, #java_signature, &[#args_conversions]).unwrap();
                                     #return_expr
                                 }}
                             }
@@ -401,28 +412,32 @@ impl<'ctx> Fold for ImportedMethodTransformer<'ctx> {
                                 if is_constructor {
                                     if let Some(class_arg_ident) = class_arg_ident {
                                         parse_quote! {{
-                                            let env: &'_ ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
-                                            let res = env.new_object(#class_arg_ident, #java_signature, &[#input_conversions]);
+                                            let env: &'_ mut ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
+                                            #input_conversions
+                                            let res = env.new_object(#class_arg_ident, #java_signature, &[#args_conversions])?;
                                             #return_expr
                                         }}
                                     } else {
                                         parse_quote! {{
-                                            let env: &'_ ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
-                                            let res = env.new_object(#java_class_path, #java_signature, &[#input_conversions]);
+                                            let env: &'_ mut ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
+                                            #input_conversions
+                                            let res = env.new_object(#java_class_path, #java_signature, &[#args_conversions])?;
                                             #return_expr
                                         }}
                                     }
                                 } else {
                                     if let Some(class_arg_ident) = class_arg_ident {
                                         parse_quote! {{
-                                            let env: &'_ ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
-                                            let res = env.call_static_method(#class_arg_ident, #java_method_name, #java_signature, &[#input_conversions]);
+                                            let env: &'_ mut ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
+                                            #input_conversions
+                                            let res = env.call_static_method(#class_arg_ident, #java_method_name, #java_signature, &[#args_conversions])?;
                                             #return_expr
                                         }}
                                     } else {
                                         parse_quote! {{
-                                            let env: &'_ ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
-                                            let res = env.call_static_method(#java_class_path, #java_method_name, #java_signature, &[#input_conversions]);
+                                            let env: &'_ mut ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
+                                            #input_conversions
+                                            let res = env.call_static_method(#java_class_path, #java_method_name, #java_signature, &[#args_conversions])?;
                                             #return_expr
                                         }}
                                     }
@@ -432,28 +447,32 @@ impl<'ctx> Fold for ImportedMethodTransformer<'ctx> {
                                 if is_constructor {
                                     if let Some(class_arg_ident) = class_arg_ident {
                                         parse_quote! {{
-                                            let env: &'_ ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
-                                            let res = env.new_object(#class_arg_ident, #java_signature, &[#input_conversions]).unwrap();
+                                            let env: &'_ mut ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
+                                            #input_conversions
+                                            let res = env.new_object(#class_arg_ident, #java_signature, &[#args_conversions]).unwrap();
                                             #return_expr
                                         }}
                                     } else {
                                         parse_quote! {{
-                                            let env: &'_ ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
-                                            let res = env.new_object(#java_class_path, #java_signature, &[#input_conversions]).unwrap();
+                                            let env: &'_ mut ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
+                                            #input_conversions
+                                            let res = env.new_object(#java_class_path, #java_signature, &[#args_conversions]).unwrap();
                                             #return_expr
                                         }}
                                     }
                                 } else {
                                     if let Some(class_arg_ident) = class_arg_ident {
                                         parse_quote! {{
-                                            let env: &'_ ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
-                                            let res = env.call_static_method(#class_arg_ident, #java_method_name, #java_signature, &[#input_conversions]).unwrap();
+                                            let env: &'_ mut ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
+                                            #input_conversions
+                                            let res = env.call_static_method(#class_arg_ident, #java_method_name, #java_signature, &[#args_conversions]).unwrap();
                                             #return_expr
                                         }}
                                     } else {
                                         parse_quote! {{
-                                            let env: &'_ ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
-                                            let res = env.call_static_method(#java_class_path, #java_method_name, #java_signature, &[#input_conversions]).unwrap();
+                                            let env: &'_ mut ::robusta_jni::jni::JNIEnv<'_> = #env_ident;
+                                            #input_conversions
+                                            let res = env.call_static_method(#java_class_path, #java_method_name, #java_signature, &[#args_conversions]).unwrap();
                                             #return_expr
                                         }}
                                     }

@@ -17,12 +17,13 @@ mod jni {
     use robusta_jni::jni::errors::Result as JniResult;
     use robusta_jni::jni::JNIEnv;
     use std::thread;
+    use robusta_jni::convert::Local;
 
     #[derive(Signature, TryIntoJavaValue, IntoJavaValue, TryFromJavaValue)]
     #[package(com.example.robustaandroidexample)]
     pub struct RobustaAndroidExample<'env: 'borrow, 'borrow> {
         #[instance]
-        raw: JObject<'env>,
+        raw: Local<'env, 'borrow>,
     }
 
     impl<'env: 'borrow, 'borrow> RobustaAndroidExample<'env, 'borrow> {

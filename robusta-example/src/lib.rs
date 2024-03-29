@@ -7,14 +7,14 @@ mod jni {
     };
     use robusta_jni::jni::errors::Error as JniError;
     use robusta_jni::jni::errors::Result as JniResult;
+    use robusta_jni::convert::Local;
     use robusta_jni::jni::JNIEnv;
-    use robusta_jni::jni::objects::JObject;
 
     #[derive(Signature, TryIntoJavaValue, IntoJavaValue, TryFromJavaValue)]
     #[package(com.example.robusta)]
     pub struct HelloWorld<'env: 'borrow, 'borrow> {
         #[instance]
-        raw: JObject<'env>,
+        raw: Local<'env, 'borrow>,
         #[field]
         foo: Field<'env, 'borrow, String>,
     }
