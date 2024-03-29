@@ -58,7 +58,7 @@ pub trait TryIntoJavaValue<'env>: Signature {
 /// This is the default trait used when converting values from Java to Rust.
 ///
 /// # Notes on the derive macro
-/// When using the derive macro, the deriving struct **must** have a [`Local`] field annotated with both `'env` and `'borrow` lifetimes and a `#[instance]` attribute.
+/// When using the derive macro, the deriving struct **must** have a [`JObject`] field annotated with `'env` and lifetime and a `#[instance]` attribute.
 /// This fields keeps a [local reference](https://docs.oracle.com/en/java/javase/15/docs/specs/jni/design.html#global-and-local-references) to the underlying Java object.
 /// All other fields are automatically initialized from fields on the Java instance with the same name.
 ///
@@ -66,11 +66,11 @@ pub trait TryIntoJavaValue<'env>: Signature {
 ///
 /// ```rust
 /// # use robusta_jni::bridge;
-/// use robusta_jni::convert::{Signature, TryFromJavaValue, Local};
+/// use robusta_jni::convert::{Signature, TryFromJavaValue};
 /// #
 /// # #[bridge]
 /// # mod jni {
-///     # use robusta_jni::convert::{Signature, TryFromJavaValue, Local};
+///     # use robusta_jni::convert::{Signature, TryFromJavaValue};
 ///     # use robusta_jni::jni::JNIEnv;
 ///     # use jni::objects::JObject;
 ///
@@ -78,13 +78,11 @@ pub trait TryIntoJavaValue<'env>: Signature {
 /// #[package()]
 /// struct A<'env: 'borrow, 'borrow> {
 ///     #[instance]
-///     raw: Local<'env, 'borrow>,
+///     raw: JObject<'env>,
 ///     foo: i32
 /// }
 /// # }
 /// ```
-///
-/// [`Local`]: convert::Local
 ///
 pub trait TryFromJavaValue<'env: 'borrow, 'borrow>
 where

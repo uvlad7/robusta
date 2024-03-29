@@ -59,16 +59,16 @@ pub mod jni {
 
     use robusta_jni::convert::{Field, JavaValue, JValueWrapper};
     use robusta_jni::convert::{IntoJavaValue, FromJavaValue, Signature, ArrSignature, TryFromJavaValue, TryIntoJavaValue};
-    use robusta_jni::convert::Local;
     use robusta_jni::jni::errors::Result as JniResult;
     use robusta_jni::jni::JNIEnv;
+    use robusta_jni::jni::objects::JObject;
     use crate::StringArr;
 
     #[derive(Signature, ArrSignature, TryIntoJavaValue, IntoJavaValue, TryFromJavaValue, FromJavaValue)]
     #[package()]
     pub struct User<'env: 'borrow, 'borrow> {
         #[instance]
-        raw: Local<'env, 'borrow>,
+        raw: JObject<'env>,
         #[field]
         pub username: Field<'env, 'borrow, String>,
         pub password: String,
