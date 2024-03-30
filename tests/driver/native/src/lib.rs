@@ -65,7 +65,8 @@ pub mod jni {
     use robusta_jni::jni::objects::{JObject, JValue};
     use crate::StringArr;
 
-    #[derive(Signature, ArrSignature, TryIntoJavaValue, IntoJavaValue, TryFromJavaValue, FromJavaValue)]
+    // #[derive(Signature, ArrSignature, TryIntoJavaValue, IntoJavaValue, TryFromJavaValue, FromJavaValue)]
+    #[derive(Signature, ArrSignature, TryFromJavaValue, FromJavaValue)]
     #[package()]
     pub struct User<'env: 'borrow, 'borrow> {
         #[instance]
@@ -75,6 +76,64 @@ pub mod jni {
         pub password: String,
         // #[field]
         // pub bytes: Field<'env, 'borrow, Box<[i8]>>,
+    }
+
+    #[automatically_derived]
+    impl<'env: 'borrow, 'borrow> ::robusta_jni::convert::TryIntoJavaValue<'env>
+    for User<'env, 'borrow> {
+        type Target = ::robusta_jni::jni::objects::JObject<'env>;
+        fn try_into(
+            self,
+            env: &mut ::robusta_jni::jni::JNIEnv<'env>,
+        ) -> ::robusta_jni::jni::errors::Result<Self::Target> {
+            Ok(self.raw.into_obj())
+        }
+    }
+    #[automatically_derived]
+    impl<'env: 'borrow, 'borrow> ::robusta_jni::convert::TryIntoJavaValue<'env>
+    for &'borrow User<'env, 'borrow> {
+        type Target = &'borrow ::robusta_jni::jni::objects::JObject<'env>;
+        fn try_into(
+            self,
+            env: &mut ::robusta_jni::jni::JNIEnv<'env>,
+        ) -> ::robusta_jni::jni::errors::Result<Self::Target> {
+            Ok(self.raw.as_obj::<'env, 'borrow>())
+        }
+    }
+    #[automatically_derived]
+    impl<'env: 'borrow, 'borrow> ::robusta_jni::convert::TryIntoJavaValue<'env>
+    for &'borrow mut User<'env, 'borrow> {
+        type Target = &'borrow ::robusta_jni::jni::objects::JObject<'env>;
+        fn try_into(
+            self,
+            env: &mut ::robusta_jni::jni::JNIEnv<'env>,
+        ) -> ::robusta_jni::jni::errors::Result<Self::Target> {
+            <&User as ::robusta_jni::convert::TryIntoJavaValue>::try_into(self, env)
+        }
+    }
+    #[automatically_derived]
+    impl<'env: 'borrow, 'borrow> ::robusta_jni::convert::IntoJavaValue<'env>
+    for User<'env, 'borrow> {
+        type Target = ::robusta_jni::jni::objects::JObject<'env>;
+        fn into(self, env: &mut ::robusta_jni::jni::JNIEnv<'env>) -> Self::Target {
+            self.raw.into_obj()
+        }
+    }
+    #[automatically_derived]
+    impl<'env: 'borrow, 'borrow> ::robusta_jni::convert::IntoJavaValue<'env>
+    for &'borrow User<'env, 'borrow> {
+        type Target = &'borrow ::robusta_jni::jni::objects::JObject<'env>;
+        fn into(self, env: &mut ::robusta_jni::jni::JNIEnv<'env>) -> Self::Target {
+            self.raw.as_obj::<'env, 'borrow>()
+        }
+    }
+    #[automatically_derived]
+    impl<'env: 'borrow, 'borrow> ::robusta_jni::convert::IntoJavaValue<'env>
+    for &'borrow mut User<'env, 'borrow> {
+        type Target = &'borrow ::robusta_jni::jni::objects::JObject<'env>;
+        fn into(self, env: &mut ::robusta_jni::jni::JNIEnv<'env>) -> Self::Target {
+            <&User as ::robusta_jni::convert::IntoJavaValue>::into(self, env)
+        }
     }
 
     // #[no_mangle]
@@ -175,7 +234,6 @@ pub mod jni {
                 )?,
                 env,
             )?;
-            // let stub_env = unsafe { env.unsafe_clone() };
             let receiver = User{
                 raw: ::robusta_jni::convert::Local::new(
                     std::marker::PhantomData,
@@ -676,52 +734,52 @@ pub mod jni {
         // ) -> Vec<String> {}
         ) -> () {}
 
-        pub extern "java" fn selfSignatureCheck(
-            &self,
-            env: &'borrow mut JNIEnv<'env>,
-            user: Self,
-            borrow_user: &Self,
-            nullable_borrow_user1: Option<&Self>,
-            nullable_borrow_user2: Option<&Self>,
-            nullable_user1: Option<Self>,
-            nullable_user2: Option<Self>,
-            user_array: Vec<Self>,
-            nullable_user_array: Vec<Option<Self>>,
-            user_array_nullable1: Option<Vec<Self>>,
-            user_array_nullable2: Option<Vec<Self>>,
-            user_arr: Box<[Self]>,
-            nullable_user_arr: Box<[Option<Self>]>,
-            user_arr_nullable1: Option<Box<[Self]>>,
-            user_arr_nullable2: Option<Box<[Self]>>,
-        // ) -> JniResult<Vec<String>> {}
-        ) -> JniResult<()> {}
+        // pub extern "java" fn selfSignatureCheck(
+        //     &self,
+        //     env: &'borrow mut JNIEnv<'env>,
+        //     user: Self,
+        //     borrow_user: &Self,
+        //     nullable_borrow_user1: Option<&Self>,
+        //     nullable_borrow_user2: Option<&Self>,
+        //     nullable_user1: Option<Self>,
+        //     nullable_user2: Option<Self>,
+        //     user_array: Vec<Self>,
+        //     nullable_user_array: Vec<Option<Self>>,
+        //     user_array_nullable1: Option<Vec<Self>>,
+        //     user_array_nullable2: Option<Vec<Self>>,
+        //     user_arr: Box<[Self]>,
+        //     nullable_user_arr: Box<[Option<Self>]>,
+        //     user_arr_nullable1: Option<Box<[Self]>>,
+        //     user_arr_nullable2: Option<Box<[Self]>>,
+        // // ) -> JniResult<Vec<String>> {}
+        // ) -> JniResult<()> {}
 
-        #[call_type(unchecked)]
-        pub extern "java" fn selfSignatureCheckUnchecked(
-            &self,
-            env: &'borrow mut JNIEnv<'env>,
-            user: Self,
-            borrow_user: &Self,
-            nullable_borrow_user1: Option<&Self>,
-            nullable_borrow_user2: Option<&Self>,
-            nullable_user1: Option<Self>,
-            nullable_user2: Option<Self>,
-            user_array: Vec<Self>,
-            nullable_user_array: Vec<Option<Self>>,
-            user_array_nullable1: Option<Vec<Self>>,
-            user_array_nullable2: Option<Vec<Self>>,
-            user_arr: Box<[Self]>,
-            nullable_user_arr: Box<[Option<Self>]>,
-            user_arr_nullable1: Option<Box<[Self]>>,
-            user_arr_nullable2: Option<Box<[Self]>>,
-        // ) -> Vec<String> {}
-        ) -> () {}
+        // #[call_type(unchecked)]
+        // pub extern "java" fn selfSignatureCheckUnchecked(
+        //     &self,
+        //     env: &'borrow mut JNIEnv<'env>,
+        //     user: Self,
+        //     borrow_user: &Self,
+        //     nullable_borrow_user1: Option<&Self>,
+        //     nullable_borrow_user2: Option<&Self>,
+        //     nullable_user1: Option<Self>,
+        //     nullable_user2: Option<Self>,
+        //     user_array: Vec<Self>,
+        //     nullable_user_array: Vec<Option<Self>>,
+        //     user_array_nullable1: Option<Vec<Self>>,
+        //     user_array_nullable2: Option<Vec<Self>>,
+        //     user_arr: Box<[Self]>,
+        //     nullable_user_arr: Box<[Option<Self>]>,
+        //     user_arr_nullable1: Option<Box<[Self]>>,
+        //     user_arr_nullable2: Option<Box<[Self]>>,
+        // // ) -> Vec<String> {}
+        // ) -> () {}
 
-        #[call_type(unchecked)]
-        pub extern "java" fn cloneUser(
-            env: &'borrow mut JNIEnv<'env>,
-            user: &Self,
-        ) -> Self {}
+        // #[call_type(unchecked)]
+        // pub extern "java" fn cloneUser(
+        //     env: &'borrow mut JNIEnv<'env>,
+        //     user: &Self,
+        // ) -> Self {}
 
         #[constructor]
         pub extern "java" fn new(

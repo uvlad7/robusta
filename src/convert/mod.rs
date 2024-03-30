@@ -68,11 +68,12 @@ pub mod local;
 /// A trait for types that are ffi-safe to use with JNI. It is implemented for primitives, [JObject](jni::objects::JObject) and [jobject](jni::sys::jobject).
 /// Users that want automatic conversion should instead implement [FromJavaValue], [IntoJavaValue] and/or [TryFromJavaValue], [TryIntoJavaValue]
 pub trait JavaValue<'env> {
+    type BoxTarget: AsRef<JObject<'env>>;
     /// Convert instance to a [`JObject`].
-    fn autobox(self, env: &mut JNIEnv<'env>) -> JObject<'env>;
+    fn autobox(self, env: &mut JNIEnv<'env>) -> Self::BoxTarget;
 
     /// Convert [`JObject`] to the implementing type.
-    fn unbox(s: JObject<'env>, env: &mut JNIEnv<'env>) -> Self;
+    fn unbox(s: Self::BoxTarget, env: &mut JNIEnv<'env>) -> Self;
 }
 
 /// This trait provides [type signatures](https://docs.oracle.com/en/java/javase/15/docs/specs/jni/types.html#type-signatures) for types.
@@ -149,6 +150,7 @@ impl<T: ArrSignature> Signature for Box<[T]> {
 
 // Similar to jvalue_types, but still different
 impl<'env> JavaValue<'env> for jobject {
+    type BoxTarget = JObject<'env>;
     fn autobox(self, _env: &mut JNIEnv<'env>) -> JObject<'env> {
         unsafe { JObject::from_raw(self) }
     }
@@ -164,6 +166,8 @@ impl Signature for () {
 }
 
 impl<'env> JavaValue<'env> for () {
+    type BoxTarget = JObject<'env>;
+
     fn autobox(self, _env: &mut JNIEnv<'env>) -> JObject<'env> {
         panic!("called `JavaValue::autobox` on unit value")
     }
@@ -214,6 +218,8 @@ mod jvalue_types {
     }
 
     impl<'env> JavaValue<'env> for j_type {
+        type BoxTarget = JObject<'env>;
+
         fn autobox(self, env: &mut JNIEnv<'env>) -> JObject<'env> {
             unsafe { env.call_static_method_unchecked(concat!("java/lang/", stringify!(boxed)),
                                              (concat!("java/lang/", stringify!(boxed)), "valueOf", concat!(stringify!((sig)), "Ljava/lang/", stringify!(boxed), ";")),
@@ -233,6 +239,8 @@ mod jvalue_types {
     }
 
     impl<'env> JavaValue<'env> for boxed_rtype {
+        type BoxTarget = JObject<'env>;
+
         fn autobox(self, _env: &mut JNIEnv<'env>) -> JObject<'env> {
             Into::into(self)
         }
@@ -265,6 +273,18 @@ mod jvalue_types {
     }
 }
 
+impl<'env: 'borrow, 'borrow> JavaValue<'env> for &'borrow JObject<'env> {
+    type BoxTarget = &'borrow JObject<'env>;
+
+    fn autobox(self, _env: &mut JNIEnv<'env>) -> &'borrow JObject<'env> {
+        self
+    }
+
+    fn unbox(s: &'borrow JObject<'env>, _env: &mut JNIEnv<'env>) -> Self {
+        s
+    }
+}
+
 #[duplicate_item(
 module_disambiguation j_type sig name;
 [a] [JString < 'env >]      ["Ljava/lang/String;"]     ["string"];
@@ -283,6 +303,8 @@ mod jobject_types {
 
     // I believe it will be optimized away for JObject
     impl<'env> JavaValue<'env> for j_type {
+        type BoxTarget = JObject<'env>;
+
         fn autobox(self, _env: &mut JNIEnv<'env>) -> JObject<'env> {
             Into::into(self)
         }

@@ -57,7 +57,7 @@ fn into_java_value_macro_derive_impl(input: DeriveInput) -> syn::Result<TokenStr
             type Target = ::robusta_jni::jni::objects::JObject<'env>;
 
             fn into(self, env: &mut ::robusta_jni::jni::JNIEnv<'env>) -> Self::Target {
-                self.#instance_ident.as_obj()
+                self.#instance_ident.into_obj()
             }
         }
 
@@ -107,7 +107,7 @@ fn tryinto_java_value_macro_derive_impl(input: DeriveInput) -> syn::Result<Token
             type Target = ::robusta_jni::jni::objects::JObject<'env>;
 
             fn try_into(self, env: &mut ::robusta_jni::jni::JNIEnv<'env>) -> ::robusta_jni::jni::errors::Result<Self::Target> {
-                Ok(self.#instance_ident.as_obj())
+                Ok(self.#instance_ident.into_obj())
             }
         }
 

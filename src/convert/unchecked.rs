@@ -340,7 +340,7 @@ where
 
         for el in self {
             let boxed = JavaValue::autobox(IntoJavaValue::into(el, env), env);
-            list.add(env,&boxed).unwrap();
+            list.add(env,boxed.as_ref()).unwrap();
         }
         obj
     }
@@ -349,7 +349,7 @@ where
 impl<'env: 'borrow, 'borrow, T, U> FromJavaValue<'env, 'borrow> for Vec<T>
 where
     for<'inner_borrow> T: FromJavaValue<'env, 'inner_borrow, Source = U>,
-    U: JavaValue<'env>,
+    U: JavaValue<'env, BoxTarget=JObject<'env>>,
 {
     type Source = JObject<'env>;
 
