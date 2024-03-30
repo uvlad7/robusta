@@ -193,7 +193,7 @@ fn from_java_value_macro_derive_impl(input: DeriveInput) -> syn::Result<TokenStr
                 #(#class_fields_env_init)*
 
                 Self {
-                    #instance_ident: ::robusta_jni::convert::Local::new(env, source),
+                    #instance_ident: ::robusta_jni::convert::Local::new(std::marker::PhantomData, source),
                     #(#fields_struct_init),*
                 }
             }
@@ -269,7 +269,7 @@ fn tryfrom_java_value_macro_derive_impl(input: DeriveInput) -> syn::Result<Token
                 #(#class_fields_env_init)*
 
                 Ok(Self {
-                    #instance_ident: ::robusta_jni::convert::Local::new(env, source),
+                    #instance_ident: ::robusta_jni::convert::Local::new(std::marker::PhantomData, source),
                     #(#fields_struct_init),*
                 })
             }

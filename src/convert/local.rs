@@ -1,13 +1,14 @@
+use std::marker::PhantomData;
 use jni::{objects::JObject, JNIEnv};
 
 pub struct Local<'a: 'b, 'b> {
     obj: JObject<'a>,
     #[allow(dead_code)]
-    env: &'b JNIEnv<'a>,
+    env: PhantomData<&'b JNIEnv<'a>>,
 }
 
 impl<'a, 'b> Local<'a, 'b> {
-    pub fn new(env: &'b JNIEnv<'a>, obj: JObject<'a>) -> Self {
+    pub fn new(env: PhantomData<&'b JNIEnv<'a>>, obj: JObject<'a>) -> Self {
         Local { obj, env }
     }
 
@@ -16,8 +17,8 @@ impl<'a, 'b> Local<'a, 'b> {
         where
             'a: 'c,
     {
-        todo!()
-        // self.obj
+        // TODO: It's just a stub, remove
+        unsafe { JObject::from_raw(self.obj.as_raw()) }
     }
 }
 

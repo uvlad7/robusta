@@ -77,7 +77,145 @@ pub mod jni {
         // pub bytes: Field<'env, 'borrow, Box<[i8]>>,
     }
 
+    // #[no_mangle]
+    // pub extern "system" fn Java_User_multipleParams<'env: 'borrow, 'borrow>(
+    //     mut env: ::robusta_jni::jni::JNIEnv<'env>,
+    //     receiver: <User<
+    //         'env,
+    //         'borrow,
+    //     > as ::robusta_jni::convert::TryFromJavaValue<'env, 'borrow>>::Source,
+    //     a: <i32 as ::robusta_jni::convert::TryFromJavaValue<'env, 'borrow>>::Source,
+    //     b: <String as ::robusta_jni::convert::TryFromJavaValue<'env, 'borrow>>::Source,
+    //     c: <robusta_jni::jni::objects::JString<
+    //         'env,
+    //     > as ::robusta_jni::convert::TryFromJavaValue<'env, 'borrow>>::Source,
+    //     d: <robusta_jni::jni::objects::JByteArray<
+    //         'env,
+    //     > as ::robusta_jni::convert::TryFromJavaValue<'env, 'borrow>>::Source,
+    //     e: <robusta_jni::jni::objects::JObject<
+    //         'env,
+    //     > as ::robusta_jni::convert::TryFromJavaValue<'env, 'borrow>>::Source,
+    // ) -> <String as ::robusta_jni::convert::TryIntoJavaValue<'env>>::Target {
+    //     fn outer<'env: 'borrow, 'borrow>(
+    //         receiver: <User<
+    //             'env,
+    //             'borrow,
+    //         > as ::robusta_jni::convert::TryFromJavaValue<'env, 'borrow>>::Source,
+    //         a: <i32 as ::robusta_jni::convert::TryFromJavaValue<'env, 'borrow>>::Source,
+    //         b: <String as ::robusta_jni::convert::TryFromJavaValue<
+    //             'env,
+    //             'borrow,
+    //         >>::Source,
+    //         c: <robusta_jni::jni::objects::JString<
+    //             'env,
+    //         > as ::robusta_jni::convert::TryFromJavaValue<'env, 'borrow>>::Source,
+    //         d: <robusta_jni::jni::objects::JByteArray<
+    //             'env,
+    //         > as ::robusta_jni::convert::TryFromJavaValue<'env, 'borrow>>::Source,
+    //         e: <robusta_jni::jni::objects::JObject<
+    //             'env,
+    //         > as ::robusta_jni::convert::TryFromJavaValue<'env, 'borrow>>::Source,
+    //         env: &'borrow mut ::robusta_jni::jni::JNIEnv<'env>,
+    //     ) -> ::robusta_jni::jni::errors::Result<
+    //         <String as ::robusta_jni::convert::TryIntoJavaValue<'env>>::Target,
+    //     > {
+    //     ::robusta_jni::convert::TryIntoJavaValue::try_into(
+    //         User::multipleParams(
+    //             ::robusta_jni::convert::TryFromJavaValue::try_from(receiver, env)?,
+    //             env,
+    //             ::robusta_jni::convert::TryFromJavaValue::try_from(a, env)?,
+    //             ::robusta_jni::convert::TryFromJavaValue::try_from(b, env)?,
+    //             ::robusta_jni::convert::TryFromJavaValue::try_from(c, env)?,
+    //             ::robusta_jni::convert::TryFromJavaValue::try_from(d, env)?,
+    //             ::robusta_jni::convert::TryFromJavaValue::try_from(e, env)?,
+    //         ),
+    //         env,
+    //     )
+    //     }
+    //     match outer(receiver, a, b, c, d, e, &mut env) {
+    //         Ok(result) => result,
+    //         Err(_) => {
+    //             unsafe { ::std::mem::zeroed() }
+    //         }
+    //     }
+    // }
+
+    #[no_mangle]
+    pub extern "system" fn Java_User_multipleParams<'env: 'borrow, 'borrow>(
+        mut env: ::robusta_jni::jni::JNIEnv<'env>,
+        receiver: ::robusta_jni::jni::objects::JObject<'env>,
+        a: ::robusta_jni::jni::sys::jint,
+        b: ::robusta_jni::jni::objects::JString<'env>,
+        c: ::robusta_jni::jni::objects::JString<'env>,
+        d: ::robusta_jni::jni::objects::JByteArray<'env>,
+        e: ::robusta_jni::jni::objects::JObject<'env>,
+    ) -> ::robusta_jni::jni::objects::JString<'env> {
+        fn outer<'env: 'borrow, 'borrow>(
+            receiver: ::robusta_jni::jni::objects::JObject<'env>,
+            a: ::robusta_jni::jni::sys::jint,
+            b: ::robusta_jni::jni::objects::JString<'env>,
+            c: ::robusta_jni::jni::objects::JString<'env>,
+            d: ::robusta_jni::jni::objects::JByteArray<'env>,
+            e: ::robusta_jni::jni::objects::JObject<'env>,
+            env: &'borrow mut ::robusta_jni::jni::JNIEnv<'env>,
+        ) -> ::robusta_jni::jni::errors::Result<
+            ::robusta_jni::jni::objects::JString<'env>,
+        > {
+            // let receiver = ::robusta_jni::convert::TryFromJavaValue::try_from(receiver, env)?;
+            let password: String = ::robusta_jni::convert::TryFromJavaValue::try_from(
+                ::core::convert::TryInto::try_into(
+                    ::robusta_jni::convert::JValueOwnedWrapper::from(
+                        env
+                            .get_field(
+                                &receiver,
+                                "password",
+                                <String as Signature>::SIG_TYPE,
+                            )?,
+                    ),
+                )?,
+                env,
+            )?;
+            // let stub_env = unsafe { env.unsafe_clone() };
+            let receiver = User{
+                raw: ::robusta_jni::convert::Local::new(
+                    std::marker::PhantomData,
+                    receiver
+                ),
+                password,
+            };
+            let a = ::robusta_jni::convert::TryFromJavaValue::try_from(a, env)?;
+            // let b = ::robusta_jni::convert::TryFromJavaValue::try_from(b, env)?;
+            let b: String = env.get_string(&b)?.into();
+            // let c = ::robusta_jni::convert::TryFromJavaValue::try_from(c, env)?;
+            // let d = ::robusta_jni::convert::TryFromJavaValue::try_from(d, env)?;
+            // let e = ::robusta_jni::convert::TryFromJavaValue::try_from(e, env)?;
+            let res = User::multipleParams(
+                receiver,
+                env,
+                a, b, c, d, e,
+            );
+            ::robusta_jni::convert::TryIntoJavaValue::try_into(res, env, )
+        }
+        match outer(receiver, a, b, c, d, e, &mut env) {
+            Ok(result) => result,
+            Err(_) => {
+                unsafe { ::std::mem::zeroed() }
+            }
+        }
+    }
+
     impl<'env: 'borrow, 'borrow> User<'env, 'borrow> {
+        pub fn multipleParams(
+            self,
+            env: &mut JNIEnv,
+            a: i32,
+            b: String,
+            c: robusta_jni::jni::objects::JString<'env>,
+            d: robusta_jni::jni::objects::JByteArray<'env>,
+            e: robusta_jni::jni::objects::JObject<'env>,
+        ) -> String {
+            todo!()
+        }
         // pub extern "jni" fn initNative() {
         //     std::env::var("RUST_LOG").unwrap_or_else(|_| {
         //         std::env::set_var("RUST_LOG", "info");
@@ -98,6 +236,18 @@ pub mod jni {
         //         .try_into()
         //         .unwrap();
         //     users_count.to_string()
+        // }
+
+        // pub extern "jni" fn multipleParams(
+        //     self,
+        //     env: &mut JNIEnv,
+        //     a: i32,
+        //     b: String,
+        //     c: robusta_jni::jni::objects::JString<'env>,
+        //     d: robusta_jni::jni::objects::JByteArray<'env>,
+        //     e: robusta_jni::jni::objects::JObject<'env>,
+        // ) -> String {
+        //     todo!()
         // }
 
         pub fn userCountStatus(env: &mut JNIEnv) -> String {
