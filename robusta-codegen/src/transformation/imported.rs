@@ -302,8 +302,10 @@ impl<'ctx> Fold for ImportedMethodTransformer<'ctx> {
                             }
                         } else {
                             quote_spanned! { output_type_span =>
-                                ::std::convert::TryInto::try_into(::robusta_jni::convert::JValueOwnedWrapper::from(res))
-                                   .and_then(|v| ::robusta_jni::convert::TryFromJavaValue::try_from(v, env))
+                                ::robusta_jni::convert::TryFromJavaValue::try_from(
+                                    ::std::convert::TryInto::try_into(::robusta_jni::convert::JValueOwnedWrapper::from(res))?,
+                                    env
+                                )
                             }
                         }
                     }

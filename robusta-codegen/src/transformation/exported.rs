@@ -246,7 +246,7 @@ impl<'ctx> Fold for ExternJNIMethodTransformer<'ctx> {
 
         sig.inputs = {
             let mut res = Punctuated::new();
-            res.push(parse_quote!(env: ::robusta_jni::jni::JNIEnv<'env>));
+            res.push(parse_quote!(mut env: ::robusta_jni::jni::JNIEnv<'env>));
 
             if !is_self_method(&node) {
                 res.push(parse_quote!(class: ::robusta_jni::jni::objects::JClass));
