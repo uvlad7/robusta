@@ -5,18 +5,22 @@ use std::convert::{TryFrom, TryInto};
 
 use jni::errors::Error as JniError;
 use jni::errors::Result as JniResult;
-use jni::objects::{JFieldID, JObject, JValueOwned};
+use jni::objects::{JFieldID, JObject};
 use jni::signature::ReturnType;
 use jni::JNIEnv;
 
-use crate::convert::{FromJavaValue, IntoJavaValue, JavaValue, Signature, TryFromJavaValue, TryIntoJavaValue, JValueOwnedWrapper};
+use crate::convert::{
+    FromJavaValue, IntoJavaValue, JValueWrapper, JavaValue, Signature, TryFromJavaValue,
+    TryIntoJavaValue,
+};
 use crate::jni::objects::JValue;
 
+#[derive(Clone)]
 pub struct Field<'env: 'borrow, 'borrow, T>
 where
     T: Signature,
 {
-    env: &'borrow mut JNIEnv<'env>,
+    env: &'borrow JNIEnv<'env>,
     field_id: JFieldID,
     obj: JObject<'env>,
     marker: PhantomData<T>,
@@ -27,7 +31,7 @@ where
     T: Signature,
 {
     pub fn new(
-        env: &'borrow mut JNIEnv<'env>,
+        env: &'borrow JNIEnv<'env>,
         obj: JObject<'env>,
         classpath_path: &str,
         field_name: &str,
@@ -47,28 +51,28 @@ where
 
 impl<'env: 'borrow, 'borrow, T> Field<'env, 'borrow, T>
 where
-    for<'inner_borrow> T: Signature + TryIntoJavaValue<'env> + TryFromJavaValue<'env, 'inner_borrow>,
-    for<'inner_borrow> <T as TryFromJavaValue<'env, 'inner_borrow>>::Source: TryFrom<JValueOwnedWrapper<'env>, Error = JniError>,
-    JValue<'env, 'env>: From<<T as TryIntoJavaValue<'env>>::Target>,
+    T: Signature + TryIntoJavaValue<'env> + TryFromJavaValue<'env, 'borrow>,
+    <T as TryFromJavaValue<'env, 'borrow>>::Source: TryFrom<JValueWrapper<'env>, Error = JniError>,
+    JValue<'env>: From<<T as TryIntoJavaValue<'env>>::Target>,
 {
     pub fn set(&mut self, value: T) -> JniResult<()> {
         let v = TryIntoJavaValue::try_into(value, self.env)?;
         let jvalue: JValue = JValue::from(v);
 
         self.env
-            .set_field_unchecked(&self.obj, self.field_id, jvalue)?;
+            .set_field_unchecked(self.obj, self.field_id, jvalue)?;
         Ok(())
     }
 
-    pub fn get(&mut self) -> JniResult<T> {
-        let res: JValueOwned = self.env.get_field_unchecked(
-            &self.obj,
+    pub fn get(&self) -> JniResult<T> {
+        let res: JValue = self.env.get_field_unchecked(
+            self.obj,
             self.field_id,
             ReturnType::from_str(<T as Signature>::SIG_TYPE).unwrap(),
         )?;
 
-        let f = JValueOwnedWrapper::from(res);
-        TryInto::try_into(f).and_then(|v| TryFromJavaValue::try_from(v, self.env))
+        let f = JValueWrapper::from(res);
+        TryInto::try_into(f).and_then(|v| TryFromJavaValue::try_from(v, &self.env))
     }
 
     // Java object is not sufficient to retrieve parent object / field owner
@@ -81,16 +85,15 @@ where
         source: JObject<'env>,
         classpath_path: &str,
         field_name: &str,
-        env: &'borrow mut JNIEnv<'env>,
+        env: &'borrow JNIEnv<'env>,
     ) -> JniResult<Self> {
         let class = env.find_class(classpath_path)?;
         let field_id = env.get_field_id(class, field_name, <T as Signature>::SIG_TYPE)?;
 
-        let obj = source.autobox(env);
         Ok(Self {
             env,
             field_id,
-            obj,
+            obj: source.autobox(env),
             marker: Default::default(),
         })
     }
@@ -98,31 +101,31 @@ where
 
 impl<'env: 'borrow, 'borrow, T> Field<'env, 'borrow, T>
 where
-    for<'inner_borrow> T: Signature + IntoJavaValue<'env> + FromJavaValue<'env, 'inner_borrow>,
-    for<'inner_borrow> <T as FromJavaValue<'env, 'inner_borrow>>::Source: TryFrom<JValueOwnedWrapper<'env>, Error = JniError>,
-    JValue<'env, 'env>: From<<T as IntoJavaValue<'env>>::Target>,
+    T: Signature + IntoJavaValue<'env> + FromJavaValue<'env, 'borrow>,
+    <T as FromJavaValue<'env, 'borrow>>::Source: TryFrom<JValueWrapper<'env>, Error = JniError>,
+    JValue<'env>: From<<T as IntoJavaValue<'env>>::Target>,
 {
     pub fn set_unchecked(&mut self, value: T) {
         let v = IntoJavaValue::into(value, self.env);
         let jvalue = JValue::from(v);
 
         self.env
-            .set_field_unchecked(&self.obj, self.field_id, jvalue)
+            .set_field_unchecked(self.obj, self.field_id, jvalue)
             .unwrap();
     }
 
-    pub fn get_unchecked(&mut self) -> T {
+    pub fn get_unchecked(&self) -> T {
         let res = self
             .env
             .get_field_unchecked(
-                &self.obj,
+                self.obj,
                 self.field_id,
                 ReturnType::from_str(<T as Signature>::SIG_TYPE).unwrap(),
             )
             .unwrap();
 
-        TryInto::try_into(JValueOwnedWrapper::from(res))
-            .map(|v| FromJavaValue::from(v, self.env))
+        TryInto::try_into(JValueWrapper::from(res))
+            .map(|v| FromJavaValue::from(v, &self.env))
             .unwrap()
     }
 
@@ -130,18 +133,17 @@ where
         source: JObject<'env>,
         classpath_path: &str,
         field_name: &str,
-        env: &'borrow mut JNIEnv<'env>,
+        env: &'borrow JNIEnv<'env>,
     ) -> Self {
         let class = env.find_class(classpath_path).unwrap();
         let field_id = env
             .get_field_id(class, field_name, <T as Signature>::SIG_TYPE)
             .unwrap();
 
-        let obj = source.autobox(env);
         Self {
             env,
             field_id,
-            obj,
+            obj: source.autobox(env),
             marker: Default::default(),
         }
     }

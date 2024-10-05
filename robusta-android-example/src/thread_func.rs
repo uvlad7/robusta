@@ -1,5 +1,5 @@
 use crate::jni::RobustaAndroidExample;
-use robusta_jni::jni::objects::JValue;
+use jni::objects::JValue;
 use log::{debug, error};
 
 pub(crate) fn thread_test_fail() -> Result<(), String> {
